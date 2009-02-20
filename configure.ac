@@ -23,6 +23,14 @@ AC_ARG_WITH(
   [LIBS="$LIBS -L$withval/lib"
    CPPFLAGS="$CPPFLAGS -I$withval/include"])
 
+
+AC_CHECKING(for uuid header file)
+AC_CHECK_HEADER(uuid/uuid.h,,
+  AC_ERROR([uuid.h is required.]))
+
+AC_CHECKING(for separate uuid library)
+AC_CHECK_LIB(uuid, uuid_generate,,) 
+
 AC_CHECKING(for sqlite3 library)
 AC_CHECK_LIB(
   sqlite3, sqlite3_open,,
