@@ -1017,7 +1017,6 @@ caml_sqlite3_user_function2(sqlite3_context *ctx)
   struct user_function *data = sqlite3_user_data(ctx);
   camlaggCtx *v_aggctx = sqlite3_aggregate_context(ctx, sizeof(*v_aggctx));
   value v_res;
-  fprintf(stderr, "caml_sqlite3_user_function2\n");
   caml_leave_blocking_section();
     v_uuid = caml_alloc_string(sizeof(uuid_t));
     memcpy(String_val(v_uuid), v_aggctx->uuid, sizeof(uuid_t));
