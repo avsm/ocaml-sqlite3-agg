@@ -209,7 +209,7 @@ external create_function :
 
 external create_aggregate_function:
   db -> string -> string -> string -> int -> 
-  (string -> Data.t array -> Data.t) -> (string -> Data.t) -> unit =
+  (string -> Data.t array -> unit) -> (string -> Data.t) -> unit =
   "caml_sqlite3_create_aggregate_function_bc"
   "caml_sqlite3_create_aggregate_function_nc"
 
@@ -234,7 +234,7 @@ module Aggregate (X : sig type t end) = struct
       if not (Hashtbl.mem agg_hash uuid) then begin
          Hashtbl.add agg_hash uuid (ref initval);
       end;
-      stepfn (Hashtbl.find agg_hash uuid) data
+      stepfn (Hashtbl.find agg_hash uuid) data;
     in
     let finalfn_wrap uuid =
       (* check if the step function has been called at least once *)

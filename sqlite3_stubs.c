@@ -1006,12 +1006,13 @@ caml_sqlite3_user_function_step(sqlite3_context *ctx, int argc, sqlite3_value **
     memcpy(String_val(v_uuid), v_aggctx->uuid, sizeof(uuid_t));
     v_args = caml_sqlite3_wrap_values(argc, argv);
     v_res = caml_callback2_exn(Field(data->v_fun, 1), v_uuid, v_args);
-    caml_sqlite3_set_result(ctx, v_res);
+    if (Is_exception_result(v_res))
+      sqlite3_result_error(ctx, "OCaml callback raised an exception", -1);
   caml_enter_blocking_section();
 }
 
 static inline void
-caml_sqlite3_user_function2(sqlite3_context *ctx)
+caml_sqlite3_user_function_final(sqlite3_context *ctx)
 {
   CAMLlocal1(v_uuid);
   struct user_function *data = sqlite3_user_data(ctx);
@@ -1090,7 +1091,8 @@ CAMLprim value caml_sqlite3_create_function(
 }
 
 CAMLprim value caml_sqlite3_create_aggregate_function_nc(
-  value v_db, value v_name, value v_namestep, value v_namefinal, value v_n_args, value v_stepfn, value v_finalfn)
+  value v_db, value v_name, value v_namestep, value v_namefinal, 
+  value v_n_args, value v_stepfn, value v_finalfn)
 {
   CAMLparam5(v_db, v_name, v_namestep, v_namefinal, v_n_args);
   CAMLxparam2(v_stepfn, v_finalfn);
@@ -1102,7 +1104,8 @@ CAMLprim value caml_sqlite3_create_aggregate_function_nc(
   param = register_user_function(dbw, v_namestep, v_stepfn, v_namefinal, v_finalfn);
   rc = sqlite3_create_function(dbw->db, String_val(v_name),
                                Int_val(v_n_args), SQLITE_UTF8, param,
-                               NULL, caml_sqlite3_user_function_step, caml_sqlite3_user_function2);
+                               NULL, caml_sqlite3_user_function_step, 
+                               caml_sqlite3_user_function_final);
   if (rc != SQLITE_OK) {
     unregister_user_function(dbw, v_name);
     raise_sqlite3_current(dbw->db, "create_function");

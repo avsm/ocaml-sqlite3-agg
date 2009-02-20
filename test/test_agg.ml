@@ -9,8 +9,7 @@ let () =
     match s, i with
     | Data.TEXT s, Data.INT i ->
        let suffix = String.make (Int64.to_int i) s.[0] in
-       l := (s ^ suffix) :: !l;
-       Data.NONE
+       l := (s ^ suffix) :: !l
     | _ -> raise (Error "wrong types to 'STRREPEAT'")) 
     (fun l ->
       Data.TEXT (String.concat " | " !l)

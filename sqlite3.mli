@@ -496,12 +496,12 @@ external delete_function : db -> string -> unit = "caml_sqlite3_delete_function"
     @raise SqliteError if an invalid database handle is passed.
 *)
 
-(** [Aggregate (X) will create a functor for aggregating SQL queries
+(** [Aggregate (X)] will create a functor for aggregating SQL queries
     using [X.t] as the aggregation variable.
 *)
 module Aggregate : functor (X : sig type t end) -> sig
 
-  val create_fun0 : db -> string -> X.t -> (X.t ref -> Data.t) ->
+  val create_fun0 : db -> string -> X.t -> (X.t ref -> unit) ->
      (X.t ref -> Data.t) -> unit
   (** [create_fun0 db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
@@ -511,7 +511,7 @@ module Aggregate : functor (X : sig type t end) -> sig
   *)
 
   val create_fun1 : db -> string -> X.t -> 
-     (X.t ref -> Data.t -> Data.t) -> (X.t ref -> Data.t) -> unit
+     (X.t ref -> Data.t -> unit) -> (X.t ref -> Data.t) -> unit
   (** [create_fun1 db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
       function has arity [1].
@@ -520,7 +520,7 @@ module Aggregate : functor (X : sig type t end) -> sig
   *)
 
   val create_fun2 : db -> string -> X.t ->
-     (X.t ref -> Data.t -> Data.t -> Data.t) -> (X.t ref -> Data.t) -> unit
+     (X.t ref -> Data.t -> Data.t -> unit) -> (X.t ref -> Data.t) -> unit
   (** [create_fun2 db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
       function has arity [2].
@@ -529,7 +529,7 @@ module Aggregate : functor (X : sig type t end) -> sig
   *)
 
   val create_funN : db -> string -> X.t -> 
-     (X.t ref -> Data.t array -> Data.t) -> (X.t ref -> Data.t) -> unit
+     (X.t ref -> Data.t array -> unit) -> (X.t ref -> Data.t) -> unit
   (** [create_funN db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
       function has arity [N].
