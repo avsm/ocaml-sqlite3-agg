@@ -207,6 +207,12 @@ external create_function :
   db -> string -> int -> (Data.t array -> Data.t) -> unit =
   "caml_sqlite3_create_function"
 
+external create_aggregate_function:
+  db -> string -> string -> string -> int -> 
+  (string -> Data.t array -> Data.t) -> (string -> Data.t) -> unit =
+  "caml_sqlite3_create_aggregate_function_bc"
+  "caml_sqlite3_create_aggregate_function_nc"
+
 let create_funN db name f = create_function db name (-1) f
 let create_fun0 db name f = create_function db name 0 (fun _ -> f ())
 let create_fun1 db name f = create_function db name 1 (fun args -> f args.(0))
@@ -219,6 +225,43 @@ let create_fun3 db name f =
 
 external delete_function : db -> string -> unit = "caml_sqlite3_delete_function"
 
+module Aggregate (X : sig type t end) = struct
+  type hash = (string , X.t ref) Hashtbl.t
+  let agg_hash : hash = Hashtbl.create 1
+
+  let register_agg_function db name arity initval stepfn finalfn =
+    let stepfn_wrap uuid data =
+      if not (Hashtbl.mem agg_hash uuid) then begin
+         Hashtbl.add agg_hash uuid (ref initval);
+      end;
+      stepfn (Hashtbl.find agg_hash uuid) data
+    in
+    let finalfn_wrap uuid =
+      (* check if the step function has been called at least once *)
+      if Hashtbl.mem agg_hash uuid then begin
+         let v = Hashtbl.find agg_hash uuid in
+         Hashtbl.remove agg_hash uuid;
+         finalfn v
+      end else
+         Data.NONE
+    in
+    let stepname = name ^ "___step" in
+    let finalname = name ^ "___final" in
+    create_aggregate_function db name stepname finalname arity
+      stepfn_wrap finalfn_wrap
+
+  let create_fun0 db name initval stepfn finalfn =
+    register_agg_function db name 0 initval (fun ctx _ -> stepfn ctx) finalfn
+
+  let create_fun1 db name initval stepfn finalfn =
+    register_agg_function db name 1 initval (fun ctx args -> stepfn ctx args.(0)) finalfn
+
+  let create_fun2 db name initval stepfn finalfn =
+    register_agg_function db name 2 initval (fun ctx args -> stepfn ctx args.(0) args.(1)) finalfn
+
+  let create_funN db name initval stepfn finalfn =
+    register_agg_function db name (-1) initval stepfn finalfn
+end
 
 (* Initialisation *)
 

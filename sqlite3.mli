@@ -469,21 +469,21 @@ val create_fun0 : db -> string -> (unit -> Data.t) -> unit
 *)
 
 val create_fun1 : db -> string -> (Data.t -> Data.t) -> unit
-(** [create_funN db name f] registers function [f] under name [name]
+(** [create_fun1 db name f] registers function [f] under name [name]
     with database handle [db].  The function has arity [1].
 
     @raise SqliteError if an invalid database handle is passed.
 *)
 
 val create_fun2 : db -> string -> (Data.t -> Data.t -> Data.t) -> unit
-(** [create_funN db name f] registers function [f] under name [name]
+(** [create_fun2 db name f] registers function [f] under name [name]
     with database handle [db].  The function has arity [2].
 
     @raise SqliteError if an invalid database handle is passed.
 *)
 
 val create_fun3 : db -> string -> (Data.t -> Data.t -> Data.t-> Data.t) -> unit
-(** [create_funN db name f] registers function [f] under name [name]
+(** [create_fun3 db name f] registers function [f] under name [name]
     with database handle [db].  The function has arity [3].
 
     @raise SqliteError if an invalid database handle is passed.
@@ -495,3 +495,44 @@ external delete_function : db -> string -> unit = "caml_sqlite3_delete_function"
 
     @raise SqliteError if an invalid database handle is passed.
 *)
+
+module Aggregate : functor (X : sig type t end) -> sig
+
+
+  val create_fun0 : db -> string -> X.t -> (X.t ref -> Data.t) ->
+     (X.t ref -> Data.t) -> unit
+  (** [create_fun0 db name initval stepfn finalfn] registers the step and
+      finalizer functions under name [name] with database handle [db].  This
+      function has arity [0].
+
+      @raise SqliteError if an invalid database handle is passed.
+  *)
+
+  val create_fun1 : db -> string -> X.t -> 
+     (X.t ref -> Data.t -> Data.t) -> (X.t ref -> Data.t) -> unit
+  (** [create_fun1 db name initval stepfn finalfn] registers the step and
+      finalizer functions under name [name] with database handle [db].  This
+      function has arity [1].
+
+      @raise SqliteError if an invalid database handle is passed.
+  *)
+
+  val create_fun2 : db -> string -> X.t ->
+     (X.t ref -> Data.t -> Data.t -> Data.t) -> (X.t ref -> Data.t) -> unit
+  (** [create_fun2 db name initval stepfn finalfn] registers the step and
+      finalizer functions under name [name] with database handle [db].  This
+      function has arity [2].
+
+      @raise SqliteError if an invalid database handle is passed.
+  *)
+
+  val create_funN : db -> string -> X.t -> 
+     (X.t ref -> Data.t array -> Data.t) -> (X.t ref -> Data.t) -> unit
+  (** [create_funN db name initval stepfn finalfn] registers the step and
+      finalizer functions under name [name] with database handle [db].  This
+      function has arity [N].
+
+      @raise SqliteError if an invalid database handle is passed.
+  *)
+end
+

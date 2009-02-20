@@ -37,6 +37,7 @@
 #include <caml/signals.h>
 
 #include <sqlite3.h>
+#include <uuid/uuid.h>
 
 #if __GNUC__ >= 3
 # define inline inline __attribute__ ((always_inline))
@@ -983,13 +984,44 @@ caml_sqlite3_user_function(sqlite3_context *ctx, int argc, sqlite3_value **argv)
   caml_enter_blocking_section();
 }
 
+typedef struct camlaggCtx camlaggCtx;
+struct camlaggCtx {
+  int init;
+  uuid_t uuid;
+};
+
+static inline void
+caml_sqlite3_user_function_step(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+  CAMLlocal1(v_uuid);
+  value v_args, v_res;
+  struct user_function *data = sqlite3_user_data(ctx);
+  camlaggCtx *v_aggctx = sqlite3_aggregate_context(ctx, sizeof(*v_aggctx));
+  if (!v_aggctx->init) {
+      uuid_generate(v_aggctx->uuid);
+      v_aggctx->init = 1;
+  }
+  caml_leave_blocking_section();
+    v_uuid = caml_alloc_string(sizeof(uuid_t));
+    memcpy(String_val(v_uuid), v_aggctx->uuid, sizeof(uuid_t));
+    v_args = caml_sqlite3_wrap_values(argc, argv);
+    v_res = caml_callback2_exn(Field(data->v_fun, 1), v_uuid, v_args);
+    caml_sqlite3_set_result(ctx, v_res);
+  caml_enter_blocking_section();
+}
+
 static inline void
 caml_sqlite3_user_function2(sqlite3_context *ctx)
 {
+  CAMLlocal1(v_uuid);
   struct user_function *data = sqlite3_user_data(ctx);
+  camlaggCtx *v_aggctx = sqlite3_aggregate_context(ctx, sizeof(*v_aggctx));
   value v_res;
+  fprintf(stderr, "caml_sqlite3_user_function2\n");
   caml_leave_blocking_section();
-    v_res = caml_callback_exn(Field(data->v_fun2, 1), Val_unit);
+    v_uuid = caml_alloc_string(sizeof(uuid_t));
+    memcpy(String_val(v_uuid), v_aggctx->uuid, sizeof(uuid_t));
+    v_res = caml_callback_exn(Field(data->v_fun2, 1), v_uuid);
     caml_sqlite3_set_result(ctx, v_res);
   caml_enter_blocking_section();
 }
@@ -1058,7 +1090,7 @@ CAMLprim value caml_sqlite3_create_function(
   CAMLreturn(Val_unit);
 }
 
-CAMLprim value caml_sqlite3_create_aggregate_function(
+CAMLprim value caml_sqlite3_create_aggregate_function_nc(
   value v_db, value v_name, value v_namestep, value v_namefinal, value v_n_args, value v_stepfn, value v_finalfn)
 {
   CAMLparam5(v_db, v_name, v_namestep, v_namefinal, v_n_args);
@@ -1071,12 +1103,19 @@ CAMLprim value caml_sqlite3_create_aggregate_function(
   param = register_user_function(dbw, v_namestep, v_stepfn, v_namefinal, v_finalfn);
   rc = sqlite3_create_function(dbw->db, String_val(v_name),
                                Int_val(v_n_args), SQLITE_UTF8, param,
-                               NULL, caml_sqlite3_user_function, caml_sqlite3_user_function2);
+                               NULL, caml_sqlite3_user_function_step, caml_sqlite3_user_function2);
   if (rc != SQLITE_OK) {
     unregister_user_function(dbw, v_name);
     raise_sqlite3_current(dbw->db, "create_function");
   }
   CAMLreturn(Val_unit);
+}
+
+CAMLprim value caml_sqlite3_create_aggregate_function_bc(
+  value *argv, int argn)
+{
+  return caml_sqlite3_create_aggregate_function_nc(argv[0], argv[1], 
+    argv[2], argv[3], argv[4], argv[5], argv[6]);
 }
 
 CAMLprim value caml_sqlite3_delete_function(value v_db, value v_name)
