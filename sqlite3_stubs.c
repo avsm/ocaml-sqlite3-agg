@@ -63,6 +63,7 @@ static const value v_None = Val_int(0);
 
 typedef struct user_function {
   value v_fun;
+  value v_fun2;
   struct user_function *next;
 } user_function;
 
@@ -278,6 +279,8 @@ static inline void ref_count_finalize_dbw(db_wrap *dbw)
     struct user_function *link;
     for (link = dbw->user_functions; link != NULL; link = link->next) {
       caml_remove_generational_global_root(&link->v_fun);
+      if (&link->v_fun2)
+          caml_remove_generational_global_root(&link->v_fun2);
       free(link);
     }
     dbw->user_functions = NULL;
@@ -980,6 +983,17 @@ caml_sqlite3_user_function(sqlite3_context *ctx, int argc, sqlite3_value **argv)
   caml_enter_blocking_section();
 }
 
+static inline void
+caml_sqlite3_user_function2(sqlite3_context *ctx)
+{
+  struct user_function *data = sqlite3_user_data(ctx);
+  value v_res;
+  caml_leave_blocking_section();
+    v_res = caml_callback_exn(Field(data->v_fun2, 1), Val_unit);
+    caml_sqlite3_set_result(ctx, v_res);
+  caml_enter_blocking_section();
+}
+
 static inline void unregister_user_function(
   struct db_wrap *db_data, value v_name)
 {
@@ -991,6 +1005,8 @@ static inline void unregister_user_function(
       if (prev == NULL) db_data->user_functions = link->next;
       else prev->next = link->next;
       caml_remove_generational_global_root(&link->v_fun);
+      if (&link->v_fun2)
+          caml_remove_generational_global_root(&link->v_fun2);
       free(link);
       break;
     }
@@ -1000,7 +1016,7 @@ static inline void unregister_user_function(
 }
 
 static inline struct user_function *
-register_user_function(struct db_wrap *db_data, value v_name, value v_fun)
+register_user_function(struct db_wrap *db_data, value v_name, value v_fun, value v_name2, value v_fun2)
 {
   /* Assume parameters are already protected */
   struct user_function *link;
@@ -1009,8 +1025,16 @@ register_user_function(struct db_wrap *db_data, value v_name, value v_fun)
   Field(cell, 1) = v_fun;
   link = caml_stat_alloc(sizeof *link);
   link->v_fun = cell;
+  if (v_name2 && v_fun2) {
+    value cell2 = caml_alloc_small(2, 0);
+    Field(cell2, 0) = v_name2;
+    Field(cell2, 1) = v_fun2;
+    link->v_fun2 = cell2;
+  }
   link->next = db_data->user_functions;
   caml_register_generational_global_root(&link->v_fun);
+  if (v_name2 && v_fun2)
+      caml_register_generational_global_root(&link->v_fun2);
   db_data->user_functions = link;
   return link;
 }
@@ -1023,10 +1047,31 @@ CAMLprim value caml_sqlite3_create_function(
   int rc;
   db_wrap *dbw = Sqlite3_val(v_db);
   check_db(dbw, "create_function");
-  param = register_user_function(dbw, v_name, v_fun);
+  param = register_user_function(dbw, v_name, v_fun, 0, 0);
   rc = sqlite3_create_function(dbw->db, String_val(v_name),
                                Int_val(v_n_args), SQLITE_UTF8, param,
                                caml_sqlite3_user_function, NULL, NULL);
+  if (rc != SQLITE_OK) {
+    unregister_user_function(dbw, v_name);
+    raise_sqlite3_current(dbw->db, "create_function");
+  }
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value caml_sqlite3_create_aggregate_function(
+  value v_db, value v_name, value v_namestep, value v_namefinal, value v_n_args, value v_stepfn, value v_finalfn)
+{
+  CAMLparam5(v_db, v_name, v_namestep, v_namefinal, v_n_args);
+  CAMLxparam2(v_stepfn, v_finalfn);
+  struct user_function *param;
+  int rc;
+  db_wrap *dbw = Sqlite3_val(v_db);
+  check_db(dbw, "create_aggregate_function");
+
+  param = register_user_function(dbw, v_namestep, v_stepfn, v_namefinal, v_finalfn);
+  rc = sqlite3_create_function(dbw->db, String_val(v_name),
+                               Int_val(v_n_args), SQLITE_UTF8, param,
+                               NULL, caml_sqlite3_user_function, caml_sqlite3_user_function2);
   if (rc != SQLITE_OK) {
     unregister_user_function(dbw, v_name);
     raise_sqlite3_current(dbw->db, "create_function");
