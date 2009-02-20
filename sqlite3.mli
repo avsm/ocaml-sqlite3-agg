@@ -496,8 +496,10 @@ external delete_function : db -> string -> unit = "caml_sqlite3_delete_function"
     @raise SqliteError if an invalid database handle is passed.
 *)
 
+(** [Aggregate (X) will create a functor for aggregating SQL queries
+    using [X.t] as the aggregation variable.
+*)
 module Aggregate : functor (X : sig type t end) -> sig
-
 
   val create_fun0 : db -> string -> X.t -> (X.t ref -> Data.t) ->
      (X.t ref -> Data.t) -> unit
@@ -534,5 +536,5 @@ module Aggregate : functor (X : sig type t end) -> sig
 
       @raise SqliteError if an invalid database handle is passed.
   *)
-end
 
+end
