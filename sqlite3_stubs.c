@@ -993,8 +993,7 @@ struct camlaggCtx {
 static inline void
 caml_sqlite3_user_function_step(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-  CAMLlocal1(v_uuid);
-  value v_args, v_res;
+  value v_uuid, v_args, v_res;
   struct user_function *data = sqlite3_user_data(ctx);
   camlaggCtx *v_aggctx = sqlite3_aggregate_context(ctx, sizeof(*v_aggctx));
   if (!v_aggctx->init) {
@@ -1014,10 +1013,9 @@ caml_sqlite3_user_function_step(sqlite3_context *ctx, int argc, sqlite3_value **
 static inline void
 caml_sqlite3_user_function_final(sqlite3_context *ctx)
 {
-  CAMLlocal1(v_uuid);
   struct user_function *data = sqlite3_user_data(ctx);
   camlaggCtx *v_aggctx = sqlite3_aggregate_context(ctx, sizeof(*v_aggctx));
-  value v_res;
+  value v_uuid, v_res;
   caml_leave_blocking_section();
     v_uuid = caml_alloc_string(sizeof(uuid_t));
     memcpy(String_val(v_uuid), v_aggctx->uuid, sizeof(uuid_t));
