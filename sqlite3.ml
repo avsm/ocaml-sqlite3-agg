@@ -226,13 +226,13 @@ let create_fun3 db name f =
 external delete_function : db -> string -> unit = "caml_sqlite3_delete_function"
 
 module Aggregate (X : sig type t end) = struct
-  type hash = (string , X.t ref) Hashtbl.t
+  type hash = (string , X.t) Hashtbl.t
   let agg_hash : hash = Hashtbl.create 1
 
   let register_agg_function db name arity initval stepfn finalfn =
     let stepfn_wrap uuid data =
       if not (Hashtbl.mem agg_hash uuid) then begin
-         Hashtbl.add agg_hash uuid (ref initval);
+         Hashtbl.add agg_hash uuid initval;
       end;
       stepfn (Hashtbl.find agg_hash uuid) data;
     in

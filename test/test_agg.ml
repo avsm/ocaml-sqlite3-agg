@@ -1,11 +1,11 @@
 open Printf
 open Sqlite3
 
-module Test_agg = Aggregate(struct type t = string list end)
+module Test_agg = Aggregate(struct type t = string list ref end)
 
 let () =
   let db = db_open "t" in
-  Test_agg.create_fun2 db "STRREPEAT" [] (fun l s i  ->
+  Test_agg.create_fun2 db "STRREPEAT" (ref []) (fun l s i  ->
     match s, i with
     | Data.TEXT s, Data.INT i ->
        let suffix = String.make (Int64.to_int i) s.[0] in

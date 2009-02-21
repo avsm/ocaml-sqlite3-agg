@@ -501,8 +501,8 @@ external delete_function : db -> string -> unit = "caml_sqlite3_delete_function"
 *)
 module Aggregate : functor (X : sig type t end) -> sig
 
-  val create_fun0 : db -> string -> X.t -> (X.t ref -> unit) ->
-     (X.t ref -> Data.t) -> unit
+  val create_fun0 : db -> string -> X.t -> (X.t -> unit) ->
+     (X.t -> Data.t) -> unit
   (** [create_fun0 db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
       function has arity [0].
@@ -511,7 +511,7 @@ module Aggregate : functor (X : sig type t end) -> sig
   *)
 
   val create_fun1 : db -> string -> X.t -> 
-     (X.t ref -> Data.t -> unit) -> (X.t ref -> Data.t) -> unit
+     (X.t -> Data.t -> unit) -> (X.t -> Data.t) -> unit
   (** [create_fun1 db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
       function has arity [1].
@@ -520,7 +520,7 @@ module Aggregate : functor (X : sig type t end) -> sig
   *)
 
   val create_fun2 : db -> string -> X.t ->
-     (X.t ref -> Data.t -> Data.t -> unit) -> (X.t ref -> Data.t) -> unit
+     (X.t -> Data.t -> Data.t -> unit) -> (X.t -> Data.t) -> unit
   (** [create_fun2 db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
       function has arity [2].
@@ -529,7 +529,7 @@ module Aggregate : functor (X : sig type t end) -> sig
   *)
 
   val create_funN : db -> string -> X.t -> 
-     (X.t ref -> Data.t array -> unit) -> (X.t ref -> Data.t) -> unit
+     (X.t -> Data.t array -> unit) -> (X.t -> Data.t) -> unit
   (** [create_funN db name initval stepfn finalfn] registers the step and
       finalizer functions under name [name] with database handle [db].  This
       function has arity [N].
